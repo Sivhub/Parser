@@ -103,7 +103,7 @@ NW_Incoming_Trans_Total = []
 NW_Incoming_Transfers = []
 NW_Incoming_Transfers_Total = []
 
-# NW Outgong Transactions
+# NW Outgoing Transactions
 NW_Bills = []
 NW_Groceries = []
 NW_Household = []
@@ -171,6 +171,14 @@ def build_IG_excel_costs(worksheet,row,col,IG_Costs):
         row += 1
         col = 0
 
+    # Sum costs
+#    formula = 'SUM(D2:D' + str(row) + ')'
+    formula = build_SUM_formula('D', 1, row)
+    col = 3
+    row +=1
+    worksheet.write_formula(row,col,formula,currency_format)
+
+
 # row = write_row_of_text_to_excel(row, col,[IG_Deals], 'NO_BOLD', 'UNDERLINE')
 
 def format_date(UTC_date):
@@ -181,11 +189,136 @@ def format_date(UTC_date):
     #print('correct_date =',correct_date)
     return(correct_date)
 
+def build_SUM_formula(col,start_row,end_row):
+
+    formula = 'SUM(' + str(col) + str(start_row) + ':' + str(col) + str(end_row) + ')'
+    #print('Formula = ',formula)
+    return(formula)
+def build_COUNT_formula(col,start_row,end_row):
+
+    formula = 'COUNT(' + str(col) + str(start_row) + ':' + str(col) + str(end_row) + ')'
+    #print('Formula = ', formula)
+    return (formula)
+
+def build_MAX_formula(col,start_row,end_row):
+    formula = 'MAX(' + str(col) + str(start_row) + ':' + str(col) + str(end_row) + ')'
+    #print('Formula = ',formula)
+    return (formula)
+
+
+def build_MIN_formula(col,start_row,end_row):
+    formula = 'MIN(' + str(col) + str(start_row) + ':' + str(col) + str(end_row) + ')'
+    # print('Formula = ',formula)
+    return (formula)
+
+def build_IG_Deals_Header_row(worksheet,row,col,IG_Deals):
+
+    write_row_of_text_to_excel(worksheet, row, IG_Trans_Date, ['Date'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, IG_Desc, ['Description'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, IG_Open_Price, ['Open Price'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, IG_Close_Price, ['Close Price'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, IG_Trans_Size, ['Size'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, IG_Total_Invested, ['Total Invested'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, IG_Profit_Loss, ['P&L'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, IG_Percent, ['%'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, IG_Trans_Open_Date, ['Open Date'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, IG_Days, ['Days'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, IG_Gains, ['Gains'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, IG_Loss, ['Loss'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, IG_Gain_Percentage, ['Gains %'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, IG_Loss_Percentage, ['Loss %'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, IG_Gains_Sterling, ['Gain £'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, IG_Loss_Sterling, ['Loss £'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, IG_Days_Gain, ['Days Gain'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, IG_Days_Loss, ['Days Loss'], 'BOLD', 'NO_UNDERLINE')
+
+
+"""
+IG_Trans_Date = int(0)
+IG_Desc = int(1)
+IG_Open_Price = int(2)
+IG_Close_Price = int(3)
+IG_Trans_Size = int(4)
+IG_Total_Invested = int(5)
+IG_Profit_Loss = int(6)
+IG_Percent = int(7)
+IG_Trans_Open_Date = int(8)
+IG_Days = int(9)
+IG_Gains = int(10)
+IG_Loss = int(11)
+IG_Gain_Percentage = int(12)
+IG_Loss_Percentage = int(13)
+IG_Gains_Sterling = int(14)
+IG_Loss_Sterling = int(15)
+IG_Days_Gain = int(16)
+IG_Days_Loss = int(17)
+
+"""
+
+
+
+def build_IG_Deals_Summary_row(worksheet,row,col,IG_Deals):
+
+    # Title
+    write_row_of_text_to_excel(worksheet, row,IG_Trans_Date,['TOTALS'], 'BOLD','NO_UNDERLINE')
+    # Count no of deals
+    worksheet.write_formula(row, IG_Desc, build_COUNT_formula('C', 1, row))
+    # Max Gain £
+    worksheet.write_formula(row, IG_Open_Price, build_MAX_formula('O', 1, row),currency_format)
+    # Max Loss £
+    worksheet.write_formula(row, IG_Close_Price, build_MIN_formula('P', 1, row),currency_format)
+    # Max Gain %
+    worksheet.write_formula(row, IG_Trans_Size, build_MAX_formula('M', 1, row),percentage_format)
+    # Max Loss %
+    worksheet.write_formula(row, IG_Total_Invested, build_MIN_formula('N', 1, row),percentage_format)
+    # Total P&L
+    worksheet.write_formula(row, IG_Profit_Loss, build_SUM_formula('G', 1, row), currency_format)
+    # Win %
+    worksheet.write_formula(row, IG_Percent, ('K' + str(row+1) + '/B' + str(row+1)), percentage_format)
+    # Total Gains
+    worksheet.write_formula(row, IG_Gains, build_SUM_formula('K', 1, row))
+    # Total Losses
+    worksheet.write_formula(row, IG_Loss, build_SUM_formula('L', 1, row))
+    # Avg Total Gains
+    worksheet.write_formula(row, IG_Gain_Percentage, (build_SUM_formula('M', 1, row) +'/K' +str(row+1)), percentage_format)
+    # Avg Total Losses
+    worksheet.write_formula(row, IG_Loss_Percentage, (build_SUM_formula('N', 1, row) + '/L' + str(row + 1)),percentage_format)
+    # Avg Profit
+    worksheet.write_formula(row, IG_Gains_Sterling, (build_SUM_formula('O', 1, row) + '/K' + str(row + 1)),currency_format)
+    # Avg £ Loss
+    worksheet.write_formula(row, IG_Loss_Sterling, (build_SUM_formula('P', 1, row) + '/L' + str(row + 1)),currency_format)
+    # Avg Days Gain
+    worksheet.write_formula(row, IG_Days_Gain, (build_SUM_formula('Q', 1, row) + '/K' + str(row + 1)),no_decimals_format)
+    # Avg Daily Losses
+    worksheet.write_formula(row, IG_Days_Loss, (build_SUM_formula('R', 1, row) + '/L' + str(row + 1)),no_decimals_format)
+
+
+    # Summary Details
+    row += 1
+    write_row_of_text_to_excel(worksheet, row, IG_Desc, ['No. Trades'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, IG_Open_Price, ['Max Gain'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, IG_Close_Price, ['Max Loss'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, IG_Trans_Size, ['Max Gain'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, IG_Total_Invested, ['Max Loss'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, IG_Profit_Loss, ['P & L'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, IG_Percent, ['Win %'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, IG_Gains, ['Gains'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, IG_Loss, ['Losses'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, IG_Gain_Percentage, ['Avg Gain'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, IG_Loss_Percentage, ['Avg Loss'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, IG_Gains_Sterling, ['Avg Gain'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, IG_Loss_Sterling, ['Avg Loss'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, IG_Days_Gain, ['Avg D Gain'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, IG_Days_Loss, ['Avg D Loss'], 'BOLD', 'NO_UNDERLINE')
+
+    #
 
 def build_IG_excel_deals(worksheet,row,col,IG_Deals):
 
     IG_Deals.reverse()
-    row = write_row_of_text_to_excel(worksheet, row, col, ['Close Date', 'Description', 'Open Price','Close Price','Size','Total Invested','P&L','%','Open Date','Days','Gains','Loss','Gains %','Loss %','Gains £','Loss £','Days Gain','Days Loss'], 'NO_BOLD', 'UNDERLINE')
+    build_IG_Deals_Header_row(worksheet, row, col, IG_Deals)
+    row +=1
+
     #Blank row
 #    row = write_row_of_text_to_excel(worksheet, row, col, '', 'NOT_BOLD','NO_UNDERLINE')
 
@@ -297,10 +430,22 @@ def build_IG_excel_deals(worksheet,row,col,IG_Deals):
             formula = 'IF((G' + str(jump_row) + ')<0,' + 'J' + str(jump_row) + ',0)'
             worksheet.write_formula(row, col, formula)
 
-
-
         row+=1
         col=0
+
+    #
+    # Build Summary Row
+    #
+    row += 1
+
+    build_IG_Deals_Summary_row(worksheet, row, col, IG_Deals)
+
+    #
+    # Build Summary Table
+    #
+    row += 1
+
+    build_IG_Deals_Summary_table(worksheet,row,col,IG_Deals)
 
 
 
@@ -311,7 +456,7 @@ def process_IG_csv_row(row):
         #print(row)
     elif(row[IG_Trans] == 'DEPO' or row[IG_Trans] == 'WITH' or row[IG_Trans] == 'DIVIDEND'):
         IG_Costs.append(row)
-        print(row)
+        #print(row)
     else:
         print('Unrecognised Transaction Type:', row[IG_Trans])
 
@@ -359,7 +504,7 @@ def write_NW_trans_to_excel(worksheet,row, col, type, trans):
         #print('GrandTotalOutgoing', GrandTotalOutgoing)
 
     return(row)
-    
+
 def write_formula_to_excel(worksheet,row,col,formula,format):
 
     worksheet.write_formula(row, col, formula, format)
@@ -700,8 +845,11 @@ date_format = workbook.add_format({'num_format': date_format_str,'align': 'left'
 
 # % format
 
-percentage_format = workbook.add_format({'num_format': '0.00%' })
+percentage_format = workbook.add_format({'num_format': '0.0%'})
 
+# Remove decimal figures
+
+no_decimals_format = workbook.add_format({'num_format': '0'})
 
 if filetype == 'NW':
     worksheet.set_column(0, 0, 20)
@@ -739,15 +887,10 @@ elif filetype == 'IG':
     worksheet1.set_column(IG_Costs_Amount, 3, 8)
     build_IG_excel_costs(worksheet1,0,0,IG_Costs)
 
-
 """
-IG_Trans_Date = int(0)
-IG_Desc = int(1)
-IG_Costs_Trans = int(2)
-IG_Costs_Amount = int(3)
-
-
-
+#
+# IG OUTPUT.xlsx -> Transactions Workbook
+#
 
 IG_Trans_Date = int(0)
 IG_Desc = int(1)
@@ -761,11 +904,26 @@ IG_Trans_Open_Date = int(8)
 IG_Days = int(9)
 IG_Gains = int(10)
 IG_Loss = int(11)
-IG_Gain_% = int(12)
-IG_Loss_% = int(13)
-IG_Gains_£ = int(14)
-IG_Loss_£ = int(15)
+IG_Gain_Percentage = int(12)
+IG_Loss_Percentage = int(13)
+IG_Gains_Sterling = int(14)
+IG_Loss_Sterling = int(15)
 IG_Days_Gain = int(16)
 IG_Days_Loss = int(17)
+
+#
+# IG OUTPUT.xlsx -> Cost workbook
+#
+IG_Trans_Date = int(0)
+IG_Desc = int(1)
+IG_Costs_Trans = int(2)
+IG_Costs_Amount = int(3)
+
 """
+
+
+
+
+
+
 workbook.close()
