@@ -21,6 +21,7 @@ filetype = ''
 row= int(0)
 GrandTotalIncoming = []
 GrandTotalOutgoing = []
+CheckSum = []
 
 #
 ################################ IG Data ####################################
@@ -211,6 +212,192 @@ def build_MIN_formula(col,start_row,end_row):
     # print('Formula = ',formula)
     return (formula)
 
+def manipulate_UTC_dates(UTC_Open_Date,UTC_Close_Date):
+
+    from datetime import date
+
+    #print('UTC_Open_Date  = ', UTC_Open_Date)
+    #print('UTC_Close_Date = ', UTC_Close_Date)
+
+    op_date = str(UTC_Open_Date).split("T")
+    open_date = str(op_date[0]).split("-")
+
+    cl_date = str(UTC_Close_Date).split("T")
+    close_date = str(cl_date[0]).split("-")
+
+    #print('Open_Date  = ',open_date)
+    #print('Close_Date = ', close_date)
+
+    d1 = date(int(open_date[0]), int(open_date[1]), int(open_date[2]))
+    d2 = date(int(close_date[0]), int(close_date[1]), int(close_date[2]))
+
+    diff = d2 - d1
+
+    #print('diff=', diff)
+
+    return(diff.days)
+
+
+def build_IG_Deals_Summary_row2(worksheet, row, col, IG_Deal,checkSumRow):
+
+    gains_sterling = []
+    gains_percent = []
+    gains_days = []
+    losses_sterling = []
+    losses_percent = []
+    losses_days = []
+
+    for line in IG_Deal:
+
+        days= manipulate_UTC_dates(line[IG_Open_Date], line[IG_Close_Date])
+        if(eval(line[IG_Size])>0):
+           total_invested = round((eval(line[IG_Open]) * eval(line[IG_Size])), 2)
+        else:
+           total_invested = round((eval(line[IG_Open]) * (int(-1)*eval(line[IG_Size]))), 2)
+
+        if(eval(line[IG_PL_Amount])>0):
+           gains_sterling.append(eval(line[IG_PL_Amount]))
+           gains_percent.append(round(((eval(line[IG_PL_Amount])/total_invested)*100),2))
+           #gains_percent.append(round((eval(line[IG_PL_Amount]) / total_invested), 2))
+           gains_days.append(days)
+        else:
+           losses_sterling.append(eval(line[IG_PL_Amount]))
+           losses_percent.append(round(((eval(line[IG_PL_Amount]) / total_invested) * 100), 2))
+           #losses_percent.append(round((eval(line[IG_PL_Amount]) / total_invested), 2))
+           losses_days.append(days)
+
+        #print('total invested =', total_invested)
+
+    number_of_trades = len(IG_Deal)
+    print('No of Trades = ', number_of_trades)
+
+    print('Gains_sterling = ', gains_sterling)
+    print('Gains_percent = ', gains_percent)
+    print('Gains_Days = ', gains_days)
+
+    print('Losses_sterling = ', losses_sterling)
+    print('Losses_percent = ', losses_percent)
+    print('Losses_days = ', losses_days)
+
+    no_of_gains = len(gains_sterling)
+    no_of_losses = len(losses_sterling)
+
+    sum_of_gains_sterling = round(sum(gains_sterling),2)
+    sum_of_losses_sterling = round(sum(losses_sterling),2)
+
+    sum_of_gains_percent = round(sum(gains_percent),2)
+    sum_of_losses_percent = round(sum(losses_percent),2)
+
+    sum_of_gains_days = sum(gains_days)
+    sum_of_losses_days = sum(losses_days)
+
+    max_gain = max(gains_percent)
+    max_loss = min(losses_percent)
+
+    total_rtn = round(sum(gains_sterling) + sum(losses_sterling),2)
+
+    print('No. of Gains = ',no_of_gains)
+    print('No. of Losses = ', no_of_losses)
+
+    print('Sum of Gains £= ', sum_of_gains_sterling)
+    print('Sum of Losses £= ', sum_of_losses_sterling)
+
+    print('Sum of Gains %= ',sum_of_gains_percent)
+    print('Sum of Losses %= ',sum_of_losses_percent)
+
+    print('Sum of Gains in Days =',sum_of_gains_days)
+    print('Sum of Losses in Days =',sum_of_losses_days)
+
+    print('Max Gain %=', max_gain)
+    print('Max Loss %=', max_loss)
+
+    print('P/L = ', total_rtn)
+
+
+    #
+    # Define columns for summary row #2
+    #
+
+    AVG_GAIN = int(1)
+    AVG_LOSS = int(2)
+    WIN_PERCENT = int(3)
+    TOTAL_TRADES = int(4)
+    MAX_GAIN = int(5)
+    MAX_LOSS = int(6)
+    AVG_DAYS_GAIN = int(7)
+    AVG_DAYS_LOSS = int(8)
+    PANDL = int(9)
+
+    #
+    # Create Summary row #2
+    #
+
+    write_row_of_text_to_excel(worksheet, row, AVG_GAIN, ['AVG GAIN'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, AVG_LOSS, ['AVG LOSS'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, WIN_PERCENT, ['WIN %'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, TOTAL_TRADES, ['TRADES'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, MAX_GAIN, ['MAX GAIN'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, MAX_LOSS, ['MAX LOSS'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, AVG_DAYS_GAIN, ['AVG DAYS GAINS'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, AVG_DAYS_LOSS, ['AVG DAYS LOSS'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, PANDL, ['P&L'], 'BOLD', 'NO_UNDERLINE')
+
+    #
+    # Write Summary row #2 details
+    #
+    row +=1
+
+    # AVG GAIN %
+    worksheet.write(row,AVG_GAIN,(sum_of_gains_percent/no_of_gains)/100,percentage_format)
+    # AVG LOSS %
+    worksheet.write(row,AVG_LOSS, (sum_of_losses_percent/no_of_losses)/100,percentage_format)
+    # WIN %
+    worksheet.write(row, WIN_PERCENT, no_of_gains / number_of_trades, percentage_format)
+    # TOTAL TRADES
+    worksheet.write(row, TOTAL_TRADES, number_of_trades)
+    # LARGEST GAIN
+    worksheet.write(row, MAX_GAIN, (max_gain)/100,percentage_format)
+    # LARGEST LOSS
+    worksheet.write(row, MAX_LOSS, (max_loss)/100, percentage_format)
+    # Average Days Gain
+    worksheet.write(row, AVG_DAYS_GAIN, round(sum_of_gains_days/no_of_gains),0)
+    worksheet.write_comment(row,AVG_DAYS_GAIN,'The average number of days a Gain is held for')
+    # Average Days Losses
+    worksheet.write(row, AVG_DAYS_LOSS, round(sum_of_losses_days/no_of_losses),0)
+    worksheet.write_comment(row,AVG_DAYS_LOSS,'The average number of days a Loss is held for')
+    # P&L
+    worksheet.write(row, PANDL, total_rtn, currency_format)
+
+
+    # Add Charts
+    row += 1
+
+    chart = workbook.add_chart({'type': 'pie'})
+
+
+'''
+#
+# IG INPUT.csv fields
+#
+
+IG_Date = int(0)
+IG_Summary = int(1)
+IG_MarketName = int(2)
+IG_Period = int(3)
+IG_PandL = int(4)
+IG_Trans = int(5)
+IG_Ref = int(6)
+IG_Open = int(7)
+IG_Close = int(8)
+IG_Size = int(9)
+IG_Currency = int(10)
+IG_PL_Amount = int(11)
+IG_Cash = int(12)
+IG_Close_Date = int(13)
+IG_Open_Date = int(14)
+IG_ISO_Currency = int(15)
+'''
+
 def build_IG_Deals_Header_row(worksheet,row,col,IG_Deals):
 
     write_row_of_text_to_excel(worksheet, row, IG_Trans_Date, ['Date'], 'BOLD', 'NO_UNDERLINE')
@@ -233,27 +420,6 @@ def build_IG_Deals_Header_row(worksheet,row,col,IG_Deals):
     write_row_of_text_to_excel(worksheet, row, IG_Days_Loss, ['Days Loss'], 'BOLD', 'NO_UNDERLINE')
 
 
-"""
-IG_Trans_Date = int(0)
-IG_Desc = int(1)
-IG_Open_Price = int(2)
-IG_Close_Price = int(3)
-IG_Trans_Size = int(4)
-IG_Total_Invested = int(5)
-IG_Profit_Loss = int(6)
-IG_Percent = int(7)
-IG_Trans_Open_Date = int(8)
-IG_Days = int(9)
-IG_Gains = int(10)
-IG_Loss = int(11)
-IG_Gain_Percentage = int(12)
-IG_Loss_Percentage = int(13)
-IG_Gains_Sterling = int(14)
-IG_Loss_Sterling = int(15)
-IG_Days_Gain = int(16)
-IG_Days_Loss = int(17)
-
-"""
 
 
 
@@ -311,7 +477,8 @@ def build_IG_Deals_Summary_row(worksheet,row,col,IG_Deals):
     write_row_of_text_to_excel(worksheet, row, IG_Days_Gain, ['Avg D Gain'], 'BOLD', 'NO_UNDERLINE')
     write_row_of_text_to_excel(worksheet, row, IG_Days_Loss, ['Avg D Loss'], 'BOLD', 'NO_UNDERLINE')
 
-    #
+
+
 
 def build_IG_excel_deals(worksheet,row,col,IG_Deals):
 
@@ -437,15 +604,11 @@ def build_IG_excel_deals(worksheet,row,col,IG_Deals):
     # Build Summary Row
     #
     row += 1
-
+    CheckSum = row+1
     build_IG_Deals_Summary_row(worksheet, row, col, IG_Deals)
 
-    #
-    # Build Summary Table
-    #
-    row += 1
-
-    build_IG_Deals_Summary_table(worksheet,row,col,IG_Deals)
+    row += 3
+    build_IG_Deals_Summary_row2(worksheet, row, col, IG_Deals,CheckSum)
 
 
 
@@ -864,12 +1027,12 @@ elif filetype == 'IG':
     worksheet.set_column(IG_Desc, 1, 40)
     worksheet.set_column(IG_Open_Price, 2, 10)
     worksheet.set_column(IG_Close_Price, 2, 10)
-    worksheet.set_column(IG_Trans_Size, 4, 5)
+    worksheet.set_column(IG_Trans_Size, 4, 7)
     worksheet.set_column(IG_Total_Invested, 5, 12)
     worksheet.set_column(IG_Profit_Loss, 6, 10)
     worksheet.set_column(IG_Percent, 7, 7)
     worksheet.set_column(IG_Trans_Open_Date, 8, 12)
-    worksheet.set_column(IG_Days, 9, 5)
+    worksheet.set_column(IG_Days, 9, 10)
     worksheet.set_column(IG_Gains, 10, 5)
     worksheet.set_column(IG_Loss, 11, 5)
     worksheet.set_column(IG_Gain_Percentage, 12, 8)
@@ -886,42 +1049,6 @@ elif filetype == 'IG':
     worksheet1.set_column(IG_Costs_Trans, 2, 10)
     worksheet1.set_column(IG_Costs_Amount, 3, 8)
     build_IG_excel_costs(worksheet1,0,0,IG_Costs)
-
-"""
-#
-# IG OUTPUT.xlsx -> Transactions Workbook
-#
-
-IG_Trans_Date = int(0)
-IG_Desc = int(1)
-IG_Open_Price = int(2)
-IG_Close_Price = int(3)
-IG_Trans_Size = int(4)
-IG_Total_Invested = int(5)
-IG_Profit_Loss = int(6)
-IG_Percent = int(7)
-IG_Trans_Open_Date = int(8)
-IG_Days = int(9)
-IG_Gains = int(10)
-IG_Loss = int(11)
-IG_Gain_Percentage = int(12)
-IG_Loss_Percentage = int(13)
-IG_Gains_Sterling = int(14)
-IG_Loss_Sterling = int(15)
-IG_Days_Gain = int(16)
-IG_Days_Loss = int(17)
-
-#
-# IG OUTPUT.xlsx -> Cost workbook
-#
-IG_Trans_Date = int(0)
-IG_Desc = int(1)
-IG_Costs_Trans = int(2)
-IG_Costs_Amount = int(3)
-
-"""
-
-
 
 
 
