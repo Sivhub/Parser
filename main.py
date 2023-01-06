@@ -152,7 +152,7 @@ def build_IG_excel_costs(worksheet,row,col,IG_Costs):
     row = write_row_of_text_to_excel(worksheet, row, col,['Date', 'Description', 'Transaction', 'Charge'], 'NO_BOLD', 'UNDERLINE')
 
     for line in IG_Costs:
-
+        #print('line: ',line)
         # Date
         worksheet.write(row, col, line[IG_Date], date_format)
         col += 1
@@ -166,7 +166,12 @@ def build_IG_excel_costs(worksheet,row,col,IG_Costs):
         col += 1
 
         # P&L
-        worksheet.write(row, col, eval(line[IG_PL_Amount]), currency_format)
+        #
+        # 05/01/23. This took forever to work out
+        # line[IG_PL_Amount] is a string. Cast as a float to cope with decimal places but first need to
+        # eliminate the ',' from 2,000 etc
+        #
+        worksheet.write(row, col, float(re.sub(',','',line[IG_PL_Amount])),currency_format)
         col += 1
 
         row += 1
@@ -237,6 +242,11 @@ def manipulate_UTC_dates(UTC_Open_Date,UTC_Close_Date):
 
     return(diff.days)
 
+def build_checksum_formula(checkSumRow,start_column,end_row,end_column):
+
+    formula = 'IF((' + str(start_column) + str(checkSumRow) + '=' + str(end_column) + str(end_row) + '),"PASS","FAIL")'
+    print('formula = ',formula)
+    return(formula)
 
 def build_IG_Deals_Summary_row2(worksheet, row, col, IG_Deal,checkSumRow):
 
@@ -250,20 +260,20 @@ def build_IG_Deals_Summary_row2(worksheet, row, col, IG_Deal,checkSumRow):
     for line in IG_Deal:
 
         days= manipulate_UTC_dates(line[IG_Open_Date], line[IG_Close_Date])
-        if(eval(line[IG_Size])>0):
-           total_invested = round((eval(line[IG_Open]) * eval(line[IG_Size])), 2)
+        # calcuate P&L amount remove ',' from 2,000 etc
+        float_PL_Amount = float(re.sub(',','',line[IG_PL_Amount]))
+        if(float(line[IG_Size])>0):
+           total_invested = float(line[IG_Open]) * float(line[IG_Size])
         else:
-           total_invested = round((eval(line[IG_Open]) * (int(-1)*eval(line[IG_Size]))), 2)
+           total_invested = float(line[IG_Open]) * (int(-1)*float(line[IG_Size]))
 
-        if(eval(line[IG_PL_Amount])>0):
-           gains_sterling.append(eval(line[IG_PL_Amount]))
-           gains_percent.append(round(((eval(line[IG_PL_Amount])/total_invested)*100),2))
-           #gains_percent.append(round((eval(line[IG_PL_Amount]) / total_invested), 2))
+        if(float_PL_Amount>0):
+           gains_sterling.append(float_PL_Amount)
+           gains_percent.append(float_PL_Amount / total_invested)
            gains_days.append(days)
         else:
-           losses_sterling.append(eval(line[IG_PL_Amount]))
-           losses_percent.append(round(((eval(line[IG_PL_Amount]) / total_invested) * 100), 2))
-           #losses_percent.append(round((eval(line[IG_PL_Amount]) / total_invested), 2))
+           losses_sterling.append(float_PL_Amount)
+           losses_percent.append(float_PL_Amount / total_invested)
            losses_days.append(days)
 
         #print('total invested =', total_invested)
@@ -282,19 +292,28 @@ def build_IG_Deals_Summary_row2(worksheet, row, col, IG_Deal,checkSumRow):
     no_of_gains = len(gains_sterling)
     no_of_losses = len(losses_sterling)
 
-    sum_of_gains_sterling = round(sum(gains_sterling),2)
-    sum_of_losses_sterling = round(sum(losses_sterling),2)
+    sum_of_gains_sterling = sum(gains_sterling)
+    sum_of_losses_sterling = sum(losses_sterling)
 
-    sum_of_gains_percent = round(sum(gains_percent),2)
-    sum_of_losses_percent = round(sum(losses_percent),2)
+    avgGainSterling = sum_of_gains_sterling / no_of_gains
+    avgLossSterling = sum_of_losses_sterling / no_of_losses
+
+    sum_of_gains_percent = sum(gains_percent)
+    sum_of_losses_percent = sum(losses_percent)
 
     sum_of_gains_days = sum(gains_days)
     sum_of_losses_days = sum(losses_days)
 
+    avgGain =  sum_of_gains_percent / no_of_gains
+    avgLoss =  sum_of_losses_percent / no_of_losses
+
+    print('avgGain = ',avgGain)
+    print('avgLoss = ',avgLoss)
+
     max_gain = max(gains_percent)
     max_loss = min(losses_percent)
 
-    total_rtn = round(sum(gains_sterling) + sum(losses_sterling),2)
+    total_rtn = sum(gains_sterling) + sum(losses_sterling)
 
     print('No. of Gains = ',no_of_gains)
     print('No. of Losses = ', no_of_losses)
@@ -326,7 +345,9 @@ def build_IG_Deals_Summary_row2(worksheet, row, col, IG_Deal,checkSumRow):
     MAX_LOSS = int(6)
     AVG_DAYS_GAIN = int(7)
     AVG_DAYS_LOSS = int(8)
-    PANDL = int(9)
+    AVG_GAIN_STERLING = int(9)
+    AVG_LOSS_STERLING = int(10)
+    PANDL = int(11)
 
     #
     # Create Summary row #2
@@ -338,8 +359,14 @@ def build_IG_Deals_Summary_row2(worksheet, row, col, IG_Deal,checkSumRow):
     write_row_of_text_to_excel(worksheet, row, TOTAL_TRADES, ['TRADES'], 'BOLD', 'NO_UNDERLINE')
     write_row_of_text_to_excel(worksheet, row, MAX_GAIN, ['MAX GAIN'], 'BOLD', 'NO_UNDERLINE')
     write_row_of_text_to_excel(worksheet, row, MAX_LOSS, ['MAX LOSS'], 'BOLD', 'NO_UNDERLINE')
-    write_row_of_text_to_excel(worksheet, row, AVG_DAYS_GAIN, ['AVG DAYS GAINS'], 'BOLD', 'NO_UNDERLINE')
-    write_row_of_text_to_excel(worksheet, row, AVG_DAYS_LOSS, ['AVG DAYS LOSS'], 'BOLD', 'NO_UNDERLINE')
+    write_row_of_text_to_excel(worksheet, row, AVG_DAYS_GAIN, ['AVG G'], 'BOLD', 'NO_UNDERLINE')
+    worksheet.write_comment(row, AVG_DAYS_GAIN, 'The Average number of days a Gain is held for')
+    write_row_of_text_to_excel(worksheet, row, AVG_DAYS_LOSS, ['AVG L'], 'BOLD', 'NO_UNDERLINE')
+    worksheet.write_comment(row, AVG_DAYS_LOSS, 'The Average number of days a Loss is held for')
+    write_row_of_text_to_excel(worksheet, row, AVG_GAIN_STERLING, ['AVG Profit'], 'BOLD', 'NO_UNDERLINE')
+    worksheet.write_comment(row, AVG_GAIN_STERLING, 'The Average Gain £')
+    write_row_of_text_to_excel(worksheet, row, AVG_LOSS_STERLING, ['AVG loss'], 'BOLD', 'NO_UNDERLINE')
+    worksheet.write_comment(row, AVG_LOSS_STERLING, 'The Average Loss £')
     write_row_of_text_to_excel(worksheet, row, PANDL, ['P&L'], 'BOLD', 'NO_UNDERLINE')
 
     #
@@ -348,55 +375,129 @@ def build_IG_Deals_Summary_row2(worksheet, row, col, IG_Deal,checkSumRow):
     row +=1
 
     # AVG GAIN %
-    worksheet.write(row,AVG_GAIN,(sum_of_gains_percent/no_of_gains)/100,percentage_format)
+    worksheet.write(row,AVG_GAIN,avgGain,percentage_format)
     # AVG LOSS %
-    worksheet.write(row,AVG_LOSS, (sum_of_losses_percent/no_of_losses)/100,percentage_format)
+    worksheet.write(row,AVG_LOSS, (avgLoss),percentage_format)
     # WIN %
     worksheet.write(row, WIN_PERCENT, no_of_gains / number_of_trades, percentage_format)
     # TOTAL TRADES
     worksheet.write(row, TOTAL_TRADES, number_of_trades)
-    # LARGEST GAIN
-    worksheet.write(row, MAX_GAIN, (max_gain)/100,percentage_format)
-    # LARGEST LOSS
-    worksheet.write(row, MAX_LOSS, (max_loss)/100, percentage_format)
-    # Average Days Gain
-    worksheet.write(row, AVG_DAYS_GAIN, round(sum_of_gains_days/no_of_gains),0)
-    worksheet.write_comment(row,AVG_DAYS_GAIN,'The average number of days a Gain is held for')
-    # Average Days Losses
-    worksheet.write(row, AVG_DAYS_LOSS, round(sum_of_losses_days/no_of_losses),0)
-    worksheet.write_comment(row,AVG_DAYS_LOSS,'The average number of days a Loss is held for')
+    # MAX GAIN
+    worksheet.write(row, MAX_GAIN, max_gain,percentage_format)
+    # MAX LOSS
+    worksheet.write(row, MAX_LOSS, max_loss, percentage_format)
+    # Average Days Gain %
+    worksheet.write(row, AVG_DAYS_GAIN, (sum_of_gains_days/no_of_gains),no_decimals_format)
+    # Average Days Losses %
+    worksheet.write(row, AVG_DAYS_LOSS, (sum_of_losses_days/no_of_losses),no_decimals_format)
+    # Average Gain £
+    worksheet.write(row, AVG_GAIN_STERLING, avgGainSterling, currency_format)
+    # Avergae Loss £
+    worksheet.write(row, AVG_LOSS_STERLING, avgLossSterling, currency_format)
     # P&L
     worksheet.write(row, PANDL, total_rtn, currency_format)
 
+    #
+    # Perform Checksum
+    #
+    row += 1
+    #formula = build_checksum_formula(checkSumRow, 'E', row, 'F')
+    # AVG_GAIN
+    worksheet.write_formula(row, AVG_GAIN, build_checksum_formula(checkSumRow, 'M', row, 'B'), percentage_format)
+    worksheet.write_formula(row, AVG_LOSS, build_checksum_formula(checkSumRow, 'N', row, 'C'), percentage_format)
+    worksheet.write_formula(row, WIN_PERCENT, build_checksum_formula(checkSumRow, 'H', row, 'D'), percentage_format)
+    worksheet.write_formula(row, TOTAL_TRADES, build_checksum_formula(checkSumRow, 'B', row, 'E'), percentage_format)
+    worksheet.write_formula(row, MAX_GAIN, build_checksum_formula(checkSumRow, 'E', row, 'F'), percentage_format)
+    worksheet.write_formula(row, MAX_LOSS, build_checksum_formula(checkSumRow, 'F', row, 'G'), percentage_format)
+    worksheet.write_formula(row, AVG_DAYS_GAIN, build_checksum_formula(checkSumRow, 'Q', row, 'H'), percentage_format)
+    worksheet.write_formula(row, AVG_DAYS_LOSS, build_checksum_formula(checkSumRow, 'R', row, 'I'), percentage_format)
+    worksheet.write_formula(row, AVG_GAIN_STERLING, build_checksum_formula(checkSumRow, 'O', row, 'J'), percentage_format)
+    worksheet.write_formula(row, AVG_LOSS_STERLING, build_checksum_formula(checkSumRow, 'P', row, 'K'),percentage_format)
+    worksheet.write_formula(row, PANDL, build_checksum_formula(checkSumRow, 'G', row, 'L'), percentage_format)
 
     # Add Charts
-    row += 1
+    title_row = row - 1
+    data_row = row
+    row += 3
+
+    # Create AVG Win / AVG Loss pie chart
+
+    catStr = '=Transactions!$B$' + str(title_row) + ':' + '$C$' + str(title_row)
+    valStr = '=Transactions!$B$' + str(data_row) + ':' + '$C$' + str(data_row)
 
     chart = workbook.add_chart({'type': 'pie'})
 
+    # Add a series to the chart.
+    chart.add_series({
+        'name': 'Average Gain & Loss %',
+        'categories': catStr,
+        'values': valStr,
+        'data_labels': {
+            'value': True,
+            'leader_lines': True
+            },
+        'points': [
+            {'fill': {'color': 'green'}},
+            {'fill': {'color': 'red'}},
+        ],
+    })
 
-'''
-#
-# IG INPUT.csv fields
-#
+    # Insert the chart into the worksheet.
+    worksheet.insert_chart('A'+str(row), chart)
 
-IG_Date = int(0)
-IG_Summary = int(1)
-IG_MarketName = int(2)
-IG_Period = int(3)
-IG_PandL = int(4)
-IG_Trans = int(5)
-IG_Ref = int(6)
-IG_Open = int(7)
-IG_Close = int(8)
-IG_Size = int(9)
-IG_Currency = int(10)
-IG_PL_Amount = int(11)
-IG_Cash = int(12)
-IG_Close_Date = int(13)
-IG_Open_Date = int(14)
-IG_ISO_Currency = int(15)
-'''
+    #
+    # Create Max Gain / Max Loss pie chart
+    #
+
+    catStr = '=Transactions!$F$' + str(title_row) + ':' + '$G$' + str(title_row)
+    valStr = '=Transactions!$F$' + str(data_row) + ':' + '$G$' + str(data_row)
+
+    chart1 = workbook.add_chart({'type': 'pie'})
+
+    # Add a series to the chart.
+    chart1.add_series({
+        'name': 'Max Gain & Loss %',
+        'categories': catStr,
+        'values': valStr,
+        'data_labels': {
+            'value': True,
+            'leader_lines': True
+        },
+        'points': [
+            {'fill': {'color': 'green'}},
+            {'fill': {'color': 'red'}},
+        ],
+    })
+
+    # Insert the chart into the worksheet.
+    worksheet.insert_chart('E' + str(row), chart1)
+
+    #
+    # Create Average time Gains & Losses held in Days
+    #
+    catStr = '=Transactions!$H$' + str(title_row) + ':' + '$I$' + str(title_row)
+    valStr = '=Transactions!$H$' + str(data_row) + ':' + '$I$' + str(data_row)
+
+    chart2 = workbook.add_chart({'type': 'pie'})
+
+    # Add a series to the chart.
+    chart2.add_series({
+        'name': 'Avg Days held for Gain & Loss',
+        'categories': catStr,
+        'values': valStr,
+        'data_labels': {
+            'value': True,
+            'leader_lines': True
+        },
+        'points': [
+            {'fill': {'color': 'green'}},
+            {'fill': {'color': 'red'}},
+        ],
+    })
+
+    # Insert the chart into the worksheet.
+    worksheet.insert_chart('L' + str(row), chart2)
+
 
 def build_IG_Deals_Header_row(worksheet,row,col,IG_Deals):
 
@@ -500,26 +601,26 @@ def build_IG_excel_deals(worksheet,row,col,IG_Deals):
         col += 1
 
         # Open Price
-        worksheet.write(row, col, eval(line[IG_Open]))
+        worksheet.write(row, col, float(line[IG_Open]))
         col += 1
 
         # ClosePrice
-        worksheet.write(row, col, eval(line[IG_Close]))
+        worksheet.write(row, col, float(line[IG_Close]))
         col += 1
 
         # Size
-        worksheet.write(row, col, eval(line[IG_Size]))
+        worksheet.write(row, col, float(line[IG_Size]))
         col += 1
 
         # Total Invested
-        TotalInvested =  (eval(line[IG_Open])*eval(line[IG_Size]))
+        TotalInvested =  (float(line[IG_Open])*float(line[IG_Size]))
         if(TotalInvested<0):
             TotalInvested *= -1
         worksheet.write(row, col, TotalInvested,currency_format)
         col += 1
 
         # P&L
-        worksheet.write(row, col, eval(line[IG_PL_Amount]),currency_format)
+        worksheet.write(row, col, float(re.sub(',','',line[IG_PL_Amount])),currency_format)
         col += 1
 
         # %
@@ -643,11 +744,11 @@ def write_NW_trans_to_excel(worksheet,row, col, type, trans):
         worksheet.write(row, col, desc)
         col+=1
         if(type == 'INCOMING'):
-            worksheet.write(row, col, eval(re.sub('£','',pin)), currency_format)
-            SubTotal += eval(re.sub('£','',pin))
+            worksheet.write(row, col, float(re.sub('£','',pin)), currency_format)
+            SubTotal += float(re.sub('£','',pin))
         else:
-            worksheet.write(row, col, eval(re.sub('£', '', pout)), currency_format)
-            SubTotal += eval(re.sub('£', '', pout))
+            worksheet.write(row, col, float(re.sub('£', '', pout)), currency_format)
+            SubTotal += float(re.sub('£', '', pout))
         row += 1
 
     end_row = str(row)
@@ -853,7 +954,7 @@ def process_NW_CheckSum(StartingBalance):
 
     for header in NW_Header:
         if(header[0] == 'Account Balance:'):
-            AccountBalance = eval(re.sub('£','',header[1]))
+            AccountBalance = float(re.sub('£','',header[1]))
             print('Account Balance', AccountBalance)
 
     # Perform the CheckSum
@@ -868,8 +969,7 @@ def process_NW_CheckSum(StartingBalance):
     rtnTuple = (AccountBalance,FinalBalance)
     return (rtnTuple)
 
-#worksheet.write(row, col, eval(re.sub('£','',pin)), currency_format)
- #           SubTotal += eval(re.sub('£','',pin))
+
 #####################################################################################
 #####################################  MAIN #########################################
 #####################################################################################
@@ -958,16 +1058,16 @@ with open(finalInputPath, 'r') as f:
         # process each line
         #print(line)
         if CheckSumFlag == 'ON':
-           CheckSumBalance = eval(re.sub('£', '', line[Balance]))
+           CheckSumBalance = float(re.sub('£', '', line[Balance]))
            #print('CheckSum Balance', CheckSumBalance)
            if(len(line[Pin])>0):
               # Adjust CheckSumBalance to reflect the Incoming payment
-              PaidIn = eval(re.sub('£','',line[Pin]))
+              PaidIn = float(re.sub('£','',line[Pin]))
               CheckSumBalance -= PaidIn
               print('Adjusted Checksum', CheckSumBalance)
            elif(len(line[Pout])>0):
               # Adjust CheckSumBalance to reflect the Outgoing Payment
-              PaidOut = eval(re.sub('£','',line[Pout]))
+              PaidOut = float(re.sub('£','',line[Pout]))
               CheckSumBalance += PaidOut
               print('Opening Balance', CheckSumBalance)
         CheckSumFlag = 'OFF'
@@ -1008,7 +1108,7 @@ date_format = workbook.add_format({'num_format': date_format_str,'align': 'left'
 
 # % format
 
-percentage_format = workbook.add_format({'num_format': '0.0%'})
+percentage_format = workbook.add_format({'num_format': '0.00%'})
 
 # Remove decimal figures
 
@@ -1026,15 +1126,15 @@ elif filetype == 'IG':
     worksheet.set_column(IG_Trans_Date, 0, 11)
     worksheet.set_column(IG_Desc, 1, 40)
     worksheet.set_column(IG_Open_Price, 2, 10)
-    worksheet.set_column(IG_Close_Price, 2, 10)
+    worksheet.set_column(IG_Close_Price, 3, 10)
     worksheet.set_column(IG_Trans_Size, 4, 7)
     worksheet.set_column(IG_Total_Invested, 5, 12)
     worksheet.set_column(IG_Profit_Loss, 6, 10)
     worksheet.set_column(IG_Percent, 7, 7)
     worksheet.set_column(IG_Trans_Open_Date, 8, 12)
     worksheet.set_column(IG_Days, 9, 10)
-    worksheet.set_column(IG_Gains, 10, 5)
-    worksheet.set_column(IG_Loss, 11, 5)
+    worksheet.set_column(IG_Gains, 10, 8)
+    worksheet.set_column(IG_Loss, 11, 8)
     worksheet.set_column(IG_Gain_Percentage, 12, 8)
     worksheet.set_column(IG_Loss_Percentage, 13, 8)
     worksheet.set_column(IG_Gains_Sterling, 14, 8)
@@ -1047,10 +1147,8 @@ elif filetype == 'IG':
     worksheet1.set_column(IG_Trans_Date, 0, 11)
     worksheet1.set_column(IG_Desc, 1, 50)
     worksheet1.set_column(IG_Costs_Trans, 2, 10)
-    worksheet1.set_column(IG_Costs_Amount, 3, 8)
+    worksheet1.set_column(IG_Costs_Amount, 3, 12)
     build_IG_excel_costs(worksheet1,0,0,IG_Costs)
-
-
 
 
 workbook.close()
