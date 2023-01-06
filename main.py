@@ -245,7 +245,7 @@ def manipulate_UTC_dates(UTC_Open_Date,UTC_Close_Date):
 def build_checksum_formula(checkSumRow,start_column,end_row,end_column):
 
     formula = 'IF((' + str(start_column) + str(checkSumRow) + '=' + str(end_column) + str(end_row) + '),"PASS","FAIL")'
-    print('formula = ',formula)
+#    print('formula = ',formula)
     return(formula)
 
 def build_IG_Deals_Summary_row2(worksheet, row, col, IG_Deal,checkSumRow):
@@ -279,7 +279,11 @@ def build_IG_Deals_Summary_row2(worksheet, row, col, IG_Deal,checkSumRow):
         #print('total invested =', total_invested)
 
     number_of_trades = len(IG_Deal)
-    print('No of Trades = ', number_of_trades)
+    #print('No of Trades = ', number_of_trades)
+
+    print('*************************************************')
+    print('*************** SUMMARY LISTS *******************')
+    print('*************************************************')
 
     print('Gains_sterling = ', gains_sterling)
     print('Gains_percent = ', gains_percent)
@@ -289,14 +293,12 @@ def build_IG_Deals_Summary_row2(worksheet, row, col, IG_Deal,checkSumRow):
     print('Losses_percent = ', losses_percent)
     print('Losses_days = ', losses_days)
 
+
     no_of_gains = len(gains_sterling)
     no_of_losses = len(losses_sterling)
 
     sum_of_gains_sterling = sum(gains_sterling)
     sum_of_losses_sterling = sum(losses_sterling)
-
-    avgGainSterling = sum_of_gains_sterling / no_of_gains
-    avgLossSterling = sum_of_losses_sterling / no_of_losses
 
     sum_of_gains_percent = sum(gains_percent)
     sum_of_losses_percent = sum(losses_percent)
@@ -304,34 +306,88 @@ def build_IG_Deals_Summary_row2(worksheet, row, col, IG_Deal,checkSumRow):
     sum_of_gains_days = sum(gains_days)
     sum_of_losses_days = sum(losses_days)
 
-    avgGain =  sum_of_gains_percent / no_of_gains
-    avgLoss =  sum_of_losses_percent / no_of_losses
+    print('*************************************************')
+    print('*************** SUMMARY TOTALS ******************')
+    print('*************************************************')
 
-    print('avgGain = ',avgGain)
-    print('avgLoss = ',avgLoss)
-
-    max_gain = max(gains_percent)
-    max_loss = min(losses_percent)
-
-    total_rtn = sum(gains_sterling) + sum(losses_sterling)
-
-    print('No. of Gains = ',no_of_gains)
+    print('No. of Gains = ', no_of_gains)
     print('No. of Losses = ', no_of_losses)
 
     print('Sum of Gains £= ', sum_of_gains_sterling)
     print('Sum of Losses £= ', sum_of_losses_sterling)
 
-    print('Sum of Gains %= ',sum_of_gains_percent)
-    print('Sum of Losses %= ',sum_of_losses_percent)
+    print('Sum of Gains %= ', sum_of_gains_percent)
+    print('Sum of Losses %= ', sum_of_losses_percent)
 
-    print('Sum of Gains in Days =',sum_of_gains_days)
-    print('Sum of Losses in Days =',sum_of_losses_days)
+    print('Sum of Gains in Days =', sum_of_gains_days)
+    print('Sum of Losses in Days =', sum_of_losses_days)
 
-    print('Max Gain %=', max_gain)
-    print('Max Loss %=', max_loss)
 
+
+    if(no_of_gains>0):
+        avgGainSterling = sum_of_gains_sterling / no_of_gains
+    else:
+        avgGainSterling = 0
+
+    if(no_of_losses>0):
+        avgLossSterling = sum_of_losses_sterling / no_of_losses
+    else:
+        avgLossSterling = 0
+
+
+    if(no_of_gains>0):
+        avgGain =  sum_of_gains_percent / no_of_gains
+    else:
+        avgGain = 0
+
+    if(no_of_losses>0):
+        avgLoss =  sum_of_losses_percent / no_of_losses
+    else:
+        avgLoss = 0
+
+    if(no_of_gains>0):
+        max_gain = max(gains_percent)
+    else:
+        max_gain = 0
+
+    if(no_of_losses>0):
+        max_loss = min(losses_percent)
+    else:
+        max_loss = 0
+
+    if(no_of_gains>0):
+        avgDaysGain = sum_of_gains_days / no_of_gains
+    else:
+        avgDaysGain = 0
+
+    if(no_of_losses>0):
+        avgDaysLosses = sum_of_losses_days / no_of_losses
+    else:
+        avgDaysLosses = 0
+
+    if((no_of_gains>0) and (number_of_trades>0)):
+        winPercent = no_of_gains / number_of_trades
+    else:
+        winPercent = 0
+
+    total_rtn = sum(gains_sterling) + sum(losses_sterling)
+
+
+    print('*************************************************')
+    print('*************** SUMMARY RESULTS *****************')
+    print('*************************************************')
+
+    print('AVG GAIN = ', avgGain)
+    print('AVG LOSS = ', avgLoss)
+    print('WIN % = ', winPercent)
+    print('No of Trades = ', number_of_trades)
+    print('Max GAIN %=', max_gain)
+    print('Max LOSS %=', max_loss)
+    print('Avg G =', avgDaysGain)
+    print('Avg L =', avgDaysLosses)
+    print('AVG Profit = ', avgGainSterling)
+    print('AVG Loss = ', avgLossSterling)
     print('P/L = ', total_rtn)
-
 
     #
     # Define columns for summary row #2
@@ -377,9 +433,9 @@ def build_IG_Deals_Summary_row2(worksheet, row, col, IG_Deal,checkSumRow):
     # AVG GAIN %
     worksheet.write(row,AVG_GAIN,avgGain,percentage_format)
     # AVG LOSS %
-    worksheet.write(row,AVG_LOSS, (avgLoss),percentage_format)
+    worksheet.write(row,AVG_LOSS, avgLoss,percentage_format)
     # WIN %
-    worksheet.write(row, WIN_PERCENT, no_of_gains / number_of_trades, percentage_format)
+    worksheet.write(row, WIN_PERCENT, winPercent, percentage_format)
     # TOTAL TRADES
     worksheet.write(row, TOTAL_TRADES, number_of_trades)
     # MAX GAIN
@@ -387,12 +443,12 @@ def build_IG_Deals_Summary_row2(worksheet, row, col, IG_Deal,checkSumRow):
     # MAX LOSS
     worksheet.write(row, MAX_LOSS, max_loss, percentage_format)
     # Average Days Gain %
-    worksheet.write(row, AVG_DAYS_GAIN, (sum_of_gains_days/no_of_gains),no_decimals_format)
+    worksheet.write(row, AVG_DAYS_GAIN, avgDaysGain,no_decimals_format)
     # Average Days Losses %
-    worksheet.write(row, AVG_DAYS_LOSS, (sum_of_losses_days/no_of_losses),no_decimals_format)
+    worksheet.write(row, AVG_DAYS_LOSS, avgDaysLosses,no_decimals_format)
     # Average Gain £
     worksheet.write(row, AVG_GAIN_STERLING, avgGainSterling, currency_format)
-    # Avergae Loss £
+    # Average Loss £
     worksheet.write(row, AVG_LOSS_STERLING, avgLossSterling, currency_format)
     # P&L
     worksheet.write(row, PANDL, total_rtn, currency_format)
@@ -402,6 +458,7 @@ def build_IG_Deals_Summary_row2(worksheet, row, col, IG_Deal,checkSumRow):
     #
     row += 1
     #formula = build_checksum_formula(checkSumRow, 'E', row, 'F')
+
     # AVG_GAIN
     worksheet.write_formula(row, AVG_GAIN, build_checksum_formula(checkSumRow, 'M', row, 'B'), percentage_format)
     worksheet.write_formula(row, AVG_LOSS, build_checksum_formula(checkSumRow, 'N', row, 'C'), percentage_format)
@@ -1130,17 +1187,17 @@ elif filetype == 'IG':
     worksheet.set_column(IG_Trans_Size, 4, 7)
     worksheet.set_column(IG_Total_Invested, 5, 12)
     worksheet.set_column(IG_Profit_Loss, 6, 10)
-    worksheet.set_column(IG_Percent, 7, 7)
+    worksheet.set_column(IG_Percent, 7, 10)
     worksheet.set_column(IG_Trans_Open_Date, 8, 12)
     worksheet.set_column(IG_Days, 9, 10)
     worksheet.set_column(IG_Gains, 10, 8)
-    worksheet.set_column(IG_Loss, 11, 8)
+    worksheet.set_column(IG_Loss, 11, 10)
     worksheet.set_column(IG_Gain_Percentage, 12, 8)
     worksheet.set_column(IG_Loss_Percentage, 13, 8)
     worksheet.set_column(IG_Gains_Sterling, 14, 8)
     worksheet.set_column(IG_Loss_Sterling, 15, 8)
     worksheet.set_column(IG_Days_Gain, 16, 8)
-    worksheet.set_column(IG_Days_Loss, 17, 8)
+    worksheet.set_column(IG_Days_Loss, 17, 10)
     build_IG_excel_deals(worksheet,0,0,IG_Deals)
 
     # Build OUTPUT.xlsx -> Costs
