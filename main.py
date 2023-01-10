@@ -19,9 +19,7 @@ inputfile = ''
 outputfile = ''
 filetype = ''
 row= int(0)
-GrandTotalIncoming = []
-GrandTotalOutgoing = []
-CheckSum = []
+
 
 #
 ################################ IG Data ####################################
@@ -795,34 +793,27 @@ def write_NW_trans_to_excel(worksheet,row, col, type, trans):
         #print("Transaction",date,trans,desc,pout,pin,balance)
         col = 0
         worksheet.write(row, col, date)
-     #  col+=1
-     #  worksheet.write(row, col, transaction)
         col+=1
         worksheet.write(row, col, desc)
         col+=1
         if(type == 'INCOMING'):
-            worksheet.write(row, col, float(re.sub('£','',pin)), currency_format)
-            SubTotal += float(re.sub('£','',pin))
+            #pin = re.sub('£','',(re.sub(',','',pin)))
+            worksheet.write(row, col, float(re.sub('£','',(re.sub(',','',pin)))), currency_format)
+
         else:
-            worksheet.write(row, col, float(re.sub('£', '', pout)), currency_format)
-            SubTotal += float(re.sub('£', '', pout))
+            worksheet.write(row, col, float(re.sub('£','',(re.sub(',','',pout)))), currency_format)
+
         row += 1
 
     end_row = str(row)
 
-    # Calculate Subtotal
+    # write formula to calculate Subtotal
 
-    formula = 'SUM(C' + start_row + ':C' + end_row + ')'
-    worksheet.write_formula(row, col+1, formula, currency_format)
+    worksheet.write_formula(row, col+1, build_SUM_formula('C', start_row, end_row), currency_format)
 
-    # Keep a track of all subtotals
+    # Append the row of the formula to the transactions for use in checksums
 
-    if(type == 'INCOMING'):
-        GrandTotalIncoming.append(SubTotal)
-        #print('GrandTotalIncoming', GrandTotalIncoming)
-    else:
-        GrandTotalOutgoing.append(SubTotal)
-        #print('GrandTotalOutgoing', GrandTotalOutgoing)
+    trans.append(['Totals',str(row)])
 
     return(row)
 
@@ -831,6 +822,55 @@ def write_formula_to_excel(worksheet,row,col,formula,format):
     worksheet.write_formula(row, col, formula, format)
     row+=1
     return(row)
+
+
+def write_NW_Summary_Line(worksheet, row, col, trans,trans_name,trans_type):
+
+    SubTotal = int(0)
+    for line in trans:
+        if(line[0]=='Totals'):
+            formula_row = int(line[1])
+        elif(trans_type == 'Incoming'):
+            SubTotal += float(re.sub('£', '', (re.sub(',', '', line[Pin]))))
+        else:
+            SubTotal += float(re.sub('£', '', (re.sub(',', '', line[Pout]))))
+
+    write_row_of_text_to_excel(worksheet, row, 0, [trans_name], 'BOLD', 'NO_UNDERLINE')
+    worksheet.write(row,1,SubTotal,currency_format)
+    display_row = row + 1
+    display_formula_row = formula_row + 1
+    worksheet.write_formula(row,2,build_checksum_formula(display_row, 'B', display_formula_row, 'D'))
+
+    row+=1
+    return(row)
+
+def write_NW_Summary(worksheet,row,col):
+
+    row = write_row_of_text_to_excel(worksheet, row, col, ['Summary'], 'BOLD', 'NO_UNDERLINE')
+
+    row = write_NW_Summary_Line(worksheet,row,col,NW_Incoming_Trans,'Income','Incoming')
+    row = write_NW_Summary_Line(worksheet, row, col, NW_Incoming_Transfers, 'I/C Transfers', 'Incoming')
+    row = write_NW_Summary_Line(worksheet, row, col, NW_Bills, 'Bills', 'Outgoing')
+    row = write_NW_Summary_Line(worksheet, row, col, NW_Groceries, 'Groceries', 'Outgoing')
+    row = write_NW_Summary_Line(worksheet, row, col, NW_Household, 'Household', 'Outgoing')
+    row = write_NW_Summary_Line(worksheet, row, col, NW_General, 'General', 'Outgoing')
+    row = write_NW_Summary_Line(worksheet, row, col, NW_Food_Drink, 'Food & Drink', 'Outgoing')
+    row = write_NW_Summary_Line(worksheet, row, col, NW_Personal_Care, 'Personal Care', 'Outgoing')
+    row = write_NW_Summary_Line(worksheet, row, col, NW_Experiences, 'Experiences', 'Outgoing')
+    row = write_NW_Summary_Line(worksheet, row, col, NW_Shopping, 'Shopping', 'Outgoing')
+    row = write_NW_Summary_Line(worksheet, row, col, NW_Transport, 'Transport', 'Outgoing')
+    row = write_NW_Summary_Line(worksheet, row, col, NW_Other, 'Other', 'Outgoing')
+    row = write_NW_Summary_Line(worksheet, row, col, NW_OG_Transfers, 'O/G Transfers', 'Outgoing')
+
+"""
+    
+    NW_Shopping = []
+    NW_Transport = []
+    NW_OG_Transfers = []
+    NW_Other = []
+
+
+   """
 
 def build_NW_excel(worksheet):
     # Add a bold format to use to highlight cells.
@@ -915,21 +955,16 @@ def build_NW_excel(worksheet):
     #
     # Write Total Outgoing Transfers
     #
+
     write_row_of_text_to_excel(worksheet,row, 1, ['Total Outgoing Transfers'], 'BOLD', 'NO_UNDERLINE')
     formula = 'SUM(D' + str(start_row) + ':D' + str(row) + ')'
     row = write_formula_to_excel(worksheet,row, 4, formula, currency_format)
     row = write_row_of_text_to_excel(worksheet,row, col, '', 'NOT_BOLD', 'NO_UNDERLINE')
 
     #
-    # Build Checksum section
+    # Write Summary + Checksum
     #
-    rtn = process_NW_CheckSum(CheckSumBalance)
-    row = write_row_of_text_to_excel(worksheet,row, col, '', 'NOT_BOLD', 'NO_UNDERLINE')
-    row = write_row_of_text_to_excel(worksheet,row, col, '', 'NOT_BOLD', 'NO_UNDERLINE')
-    row = write_row_of_text_to_excel(worksheet,row, col, ['CHECKSUM'], 'BOLD', 'NO_UNDERLINE')
-    row = write_row_of_text_to_excel(worksheet,row, col, '', 'NOT_BOLD', 'NO_UNDERLINE')
-    row = write_row_of_text_to_excel(worksheet,row, col, ['NW Account Balance',rtn[0]], 'NOT_BOLD', 'NO_UNDERLINE')
-    row = write_row_of_text_to_excel(worksheet,row, col, ['Checksum   Balance',rtn[1]], 'NOT_BOLD', 'NO_UNDERLINE')
+    write_NW_Summary(worksheet,row,col)
 
 def check_dictionary(row, dictionary):
     try:
@@ -987,8 +1022,8 @@ def process_NW_csv_row(row):
         #Check if Header row
         if(row[0] == 'Account Name:' or row[0] == 'Account Balance:' or row[0] == 'Available Balance: ' or row[0] == 'Date'):
             NW_Header.append(row)
-            if(row[0] == 'Date'):
-                return('ON')
+          #  if(row[0] == 'Date'):
+           #     return('ON')
         elif(len(row[Pin])>0):
             # Process Incoming
             process_NW_incoming(row)
@@ -999,32 +1034,7 @@ def process_NW_csv_row(row):
             process_NW_outgoing(row)
 
     return('OFF')
-def process_NW_CheckSum(StartingBalance):
 
-    TotalIncome = sum(GrandTotalIncoming)
-    TotalOutgoing = sum(GrandTotalOutgoing)
-    print('Starting Balance', StartingBalance)
-    print('Total Income', TotalIncome)
-    print('Total Outgoing', TotalOutgoing)
-
-    # Retrieve the Account Balance from the Header
-
-    for header in NW_Header:
-        if(header[0] == 'Account Balance:'):
-            AccountBalance = float(re.sub('£','',header[1]))
-            print('Account Balance', AccountBalance)
-
-    # Perform the CheckSum
-    FinalBalance = round((StartingBalance + TotalIncome - TotalOutgoing),2)
-    print('Final Balance', FinalBalance)
-
-    if(FinalBalance == AccountBalance):
-        print('********************* CHECKSUM OK   ***********************')
-    else:
-        print('********************* CHECKSUM FAIL ***********************')
-
-    rtnTuple = (AccountBalance,FinalBalance)
-    return (rtnTuple)
 
 
 #####################################################################################
@@ -1061,8 +1071,10 @@ if __name__ == "__main__":
 finalInputPath = os.path.join("c:",os.sep, "Users","sdinn","Downloads",inputfile)
 finalOutputPath = os.path.join("c:",os.sep, "Users","sdinn","Downloads",outputfile)
 
-finalIPHeaderPath = os.path.join("c:",os.sep, "Users","sdinn","OneDrive","Documents","Personal","Python","ParserFiles","Nationwide","IC_HEADER.csv")
-finalOPHeaderPath = os.path.join("c:",os.sep, "Users","sdinn","OneDrive","Documents","Personal","Python","ParserFiles","Nationwide","OG_HEADER.csv")
+#finalIPHeaderPath = os.path.join("c:",os.sep, "Users","sdinn","OneDrive","Documents","Personal","Python","ParserFiles","Nationwide","IC_HEADER.csv")
+#finalOPHeaderPath = os.path.join("c:",os.sep, "Users","sdinn","OneDrive","Documents","Personal","Python","ParserFiles","Nationwide","OG_HEADER.csv")
+finalIPHeaderPath = os.path.join("c:",os.sep, "Users","sdinn","OneDrive","Documents","fin","Budget","ParserFiles","IC_HEADER.csv")
+finalOPHeaderPath = os.path.join("c:",os.sep, "Users","sdinn","OneDrive","Documents","fin","Budget","ParserFiles","OG_HEADER.csv")
 
 
 
@@ -1085,7 +1097,7 @@ if(filetype == 'NW'):
             #print('IC_HEADER_FILE:', line)
             ic_types_dict[line[0]] = line[1]
 
-        # print('IC_Dictionary', ic_types_dict)
+        print('IC_Dictionary', ic_types_dict)
 
     #
     # Open OP_HEADER.csv & build ic_ty
@@ -1099,7 +1111,7 @@ if(filetype == 'NW'):
             #print('OG_HEADER_FILE:', line)
             og_types_dict[line[0]] = line[1]
 
-       # print('OG_Dictionary', og_types_dict)
+        print('OG_Dictionary', og_types_dict)
 
 
 
@@ -1107,29 +1119,13 @@ if(filetype == 'NW'):
 # Open CSV file & process
 #
 with open(finalInputPath, 'r') as f:
-    CheckSumFlag = 'OFF'
-    CheckSumBalance = 0
 
     csv_reader = csv.reader(f)
     for line in csv_reader:
         # process each line
         #print(line)
-        if CheckSumFlag == 'ON':
-           CheckSumBalance = float(re.sub('£', '', line[Balance]))
-           #print('CheckSum Balance', CheckSumBalance)
-           if(len(line[Pin])>0):
-              # Adjust CheckSumBalance to reflect the Incoming payment
-              PaidIn = float(re.sub('£','',line[Pin]))
-              CheckSumBalance -= PaidIn
-              print('Adjusted Checksum', CheckSumBalance)
-           elif(len(line[Pout])>0):
-              # Adjust CheckSumBalance to reflect the Outgoing Payment
-              PaidOut = float(re.sub('£','',line[Pout]))
-              CheckSumBalance += PaidOut
-              print('Opening Balance', CheckSumBalance)
-        CheckSumFlag = 'OFF'
         if filetype == 'NW':
-           CheckSumFlag = process_NW_csv_row(line)
+            process_NW_csv_row(line)
         elif filetype == 'IG':
             process_IG_csv_row(line)
 
