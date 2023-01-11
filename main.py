@@ -5,9 +5,9 @@ import xlsxwriter
 import sys, getopt
 import os.path
 
-#
-################################ Global App Data ###############################
-#
+#######################################################################################################################
+################################ Global App Data ######################################################################
+#######################################################################################################################
 PARSED = int(0)
 NOT_PARSED = int(-1)
 BOLD = int(1)
@@ -21,9 +21,10 @@ filetype = ''
 row= int(0)
 
 
-#
-################################ IG Data ####################################
-#
+
+######################################################################################################################
+################################ IG Data #############################################################################
+######################################################################################################################
 
 #
 # IG INPUT.csv fields
@@ -83,9 +84,9 @@ IG_Deals = []
 IG_Costs = []
 
 
-#
-################################ NW Data ####################################
-#
+######################################################################################################################
+################################ NW Data #############################################################################
+######################################################################################################################
 
 # Transaction Fields
 Date = int(0)
@@ -95,12 +96,26 @@ Pout = int(3)
 Pin = int(4)
 Balance = int(5)
 
+
+#
+# Catching the first transaction Balance for checksum purposes
+#
+
+Catch_First_Trans_Flag = []
+
+#
+# Grandtotals
+#
+
+Total_Incoming = []
+Total_Outgoing = []
+
 # NW Incoming Transactions
 NW_Header = []
+NW_Incoming_Savings = []
 NW_Incoming_Trans = []
-NW_Incoming_Trans_Total = []
 NW_Incoming_Transfers = []
-NW_Incoming_Transfers_Total = []
+
 
 # NW Outgoing Transactions
 NW_Bills = []
@@ -123,9 +138,10 @@ IC_TRANSFER = int(0)
 ic_types_dict = {}
 og_types_dict = {}
 
-#
-############################ GLOBAL FUNCTIONS #####################################
-#
+
+######################################################################################################################
+############################ GLOBAL FUNCTIONS ########################################################################
+######################################################################################################################
 
 
 def write_row_of_text_to_excel(worksheet, row, col, text, shade, border):
@@ -141,49 +157,6 @@ def write_row_of_text_to_excel(worksheet, row, col, text, shade, border):
         col+=1
     row+=1
     return(row)
-#
-############################ IG FUNCTIONS #####################################
-#
-def build_IG_excel_costs(worksheet,row,col,IG_Costs):
-
-    IG_Costs.reverse()
-    row = write_row_of_text_to_excel(worksheet, row, col,['Date', 'Description', 'Transaction', 'Charge'], 'NO_BOLD', 'UNDERLINE')
-
-    for line in IG_Costs:
-        #print('line: ',line)
-        # Date
-        worksheet.write(row, col, line[IG_Date], date_format)
-        col += 1
-
-        # Desc
-        worksheet.write(row, col, line[IG_MarketName])
-        col += 1
-
-        # Trans
-        worksheet.write(row, col, line[IG_Trans])
-        col += 1
-
-        # P&L
-        #
-        # 05/01/23. This took forever to work out
-        # line[IG_PL_Amount] is a string. Cast as a float to cope with decimal places but first need to
-        # eliminate the ',' from 2,000 etc
-        #
-        worksheet.write(row, col, float(re.sub(',','',line[IG_PL_Amount])),currency_format)
-        col += 1
-
-        row += 1
-        col = 0
-
-    # Sum costs
-#    formula = 'SUM(D2:D' + str(row) + ')'
-    formula = build_SUM_formula('D', 1, row)
-    col = 3
-    row +=1
-    worksheet.write_formula(row,col,formula,currency_format)
-
-
-# row = write_row_of_text_to_excel(row, col,[IG_Deals], 'NO_BOLD', 'UNDERLINE')
 
 def format_date(UTC_date):
 
@@ -245,6 +218,52 @@ def build_checksum_formula(checkSumRow,start_column,end_row,end_column):
     formula = 'IF((' + str(start_column) + str(checkSumRow) + '=' + str(end_column) + str(end_row) + '),"PASS","FAIL")'
 #    print('formula = ',formula)
     return(formula)
+
+######################################################################################################################
+############################ IG FUNCTIONS ############################################################################
+######################################################################################################################
+
+def build_IG_excel_costs(worksheet,row,col,IG_Costs):
+
+    IG_Costs.reverse()
+    row = write_row_of_text_to_excel(worksheet, row, col,['Date', 'Description', 'Transaction', 'Charge'], 'NO_BOLD', 'UNDERLINE')
+
+    for line in IG_Costs:
+        #print('line: ',line)
+        # Date
+        worksheet.write(row, col, line[IG_Date], date_format)
+        col += 1
+
+        # Desc
+        worksheet.write(row, col, line[IG_MarketName])
+        col += 1
+
+        # Trans
+        worksheet.write(row, col, line[IG_Trans])
+        col += 1
+
+        # P&L
+        #
+        # 05/01/23. This took forever to work out
+        # line[IG_PL_Amount] is a string. Cast as a float to cope with decimal places but first need to
+        # eliminate the ',' from 2,000 etc
+        #
+        worksheet.write(row, col, float(re.sub(',','',line[IG_PL_Amount])),currency_format)
+        col += 1
+
+        row += 1
+        col = 0
+
+    # Sum costs
+#    formula = 'SUM(D2:D' + str(row) + ')'
+    formula = build_SUM_formula('D', 1, row)
+    col = 3
+    row +=1
+    worksheet.write_formula(row,col,formula,currency_format)
+
+
+# row = write_row_of_text_to_excel(row, col,[IG_Deals], 'NO_BOLD', 'UNDERLINE')
+
 
 def build_IG_Deals_Summary_row2(worksheet, row, col, IG_Deal,checkSumRow):
 
@@ -779,11 +798,9 @@ def process_IG_csv_row(row):
     else:
         print('Unrecognised Transaction Type:', row[IG_Trans])
 
-#
-########################## NW FUNCTIONS #######################################
-#
-
-
+######################################################################################################################
+########################## NW FUNCTIONS ##############################################################################
+######################################################################################################################
 
 def write_NW_trans_to_excel(worksheet,row, col, type, trans):
 
@@ -841,15 +858,37 @@ def write_NW_Summary_Line(worksheet, row, col, trans,trans_name,trans_type):
     display_formula_row = formula_row + 1
     worksheet.write_formula(row,2,build_checksum_formula(display_row, 'B', display_formula_row, 'D'))
 
+    #
+    # Keep track of Grand Totals
+    #
+    if(trans_type=='Incoming'):
+        Total_Incoming.append(SubTotal)
+    else:
+        Total_Outgoing.append(SubTotal)
+
     row+=1
     return(row)
 
 def write_NW_Summary(worksheet,row,col):
 
-    row = write_row_of_text_to_excel(worksheet, row, col, ['Summary'], 'BOLD', 'NO_UNDERLINE')
+    GrandTotalIncoming = int(0)
+    GrandTotalOutgoing = int(0)
 
-    row = write_NW_Summary_Line(worksheet,row,col,NW_Incoming_Trans,'Income','Incoming')
+    row = write_row_of_text_to_excel(worksheet, row, col, '', 'BOLD', 'NO_UNDERLINE')
+    row = write_row_of_text_to_excel(worksheet, row, col, ['SUMMARY','','','Totals'], 'BOLD', 'NO_UNDERLINE')
+    row = write_row_of_text_to_excel(worksheet, row, col, '', 'BOLD', 'NO_UNDERLINE')
+
+    row = write_NW_Summary_Line(worksheet, row, col, NW_Incoming_Savings, 'Savings', 'Incoming')
+    row = write_NW_Summary_Line(worksheet,row,col,NW_Incoming_Trans,'Other Income','Incoming')
     row = write_NW_Summary_Line(worksheet, row, col, NW_Incoming_Transfers, 'I/C Transfers', 'Incoming')
+
+    # Write Total Incoming
+    for i in Total_Incoming:
+        GrandTotalIncoming = GrandTotalIncoming + i
+
+    worksheet.write(row, 3, GrandTotalIncoming, currency_format)
+    row = write_row_of_text_to_excel(worksheet, row, col, '', 'BOLD', 'NO_UNDERLINE')
+
     row = write_NW_Summary_Line(worksheet, row, col, NW_Bills, 'Bills', 'Outgoing')
     row = write_NW_Summary_Line(worksheet, row, col, NW_Groceries, 'Groceries', 'Outgoing')
     row = write_NW_Summary_Line(worksheet, row, col, NW_Household, 'Household', 'Outgoing')
@@ -862,15 +901,53 @@ def write_NW_Summary(worksheet,row,col):
     row = write_NW_Summary_Line(worksheet, row, col, NW_Other, 'Other', 'Outgoing')
     row = write_NW_Summary_Line(worksheet, row, col, NW_OG_Transfers, 'O/G Transfers', 'Outgoing')
 
-"""
-    
-    NW_Shopping = []
-    NW_Transport = []
-    NW_OG_Transfers = []
-    NW_Other = []
+    # Write Total Outgoing
+    for i in Total_Outgoing:
+        GrandTotalOutgoing = GrandTotalOutgoing + i
+
+    worksheet.write(row, 3, GrandTotalOutgoing, currency_format)
+    row = write_row_of_text_to_excel(worksheet, row, col, '', 'BOLD', 'NO_UNDERLINE')
 
 
-   """
+    #
+    # Calculate Final Balance
+    #
+
+    print('First Balance =',Catch_First_Trans_Flag)
+
+    if len(Catch_First_Trans_Flag[1][Pout])>0:
+
+        OpeningBalance = float(re.sub('£', '', (re.sub(',', '', Catch_First_Trans_Flag[1][Balance]))))
+        TransValue = float(re.sub('£', '', (re.sub(',', '', Catch_First_Trans_Flag[1][Pout]))))
+    else:
+
+        OpeningBalance = float(re.sub('£', '', (re.sub(',', '', Catch_First_Trans_Flag[1][Balance]))))
+        TransValue = -1 * float(re.sub('£', '', (re.sub(',', '', Catch_First_Trans_Flag[1][Pin]))))
+
+
+    print('Opening Balance     =', round(OpeningBalance,2))
+    print('+ Total Incoming    =',round(GrandTotalIncoming,2))
+    print('- Total Outgoing    =',round(GrandTotalOutgoing,2))
+    print('+ Transaction Value =', round(TransValue,2))
+
+
+    FinalBalance = OpeningBalance + GrandTotalIncoming - GrandTotalOutgoing + TransValue
+
+    print('Final Balance       =', round(FinalBalance,2))
+
+    worksheet.write(row, 1, OpeningBalance, currency_format)
+    row = write_row_of_text_to_excel(worksheet, row, col, ['Opening Balance'], 'BOLD', 'NO_UNDERLINE')
+    worksheet.write(row, 1, GrandTotalIncoming, currency_format)
+    worksheet.write(row, 2, '+')
+    row = write_row_of_text_to_excel(worksheet, row, col, ['Total Incoming'], 'BOLD', 'NO_UNDERLINE')
+    worksheet.write(row, 1, GrandTotalOutgoing, currency_format)
+    worksheet.write(row, 2, '-')
+    row = write_row_of_text_to_excel(worksheet, row, col, ['Total Outgoing'], 'BOLD', 'NO_UNDERLINE')
+    worksheet.write(row, 1, TransValue, currency_format)
+    worksheet.write(row, 2, '+')
+    row = write_row_of_text_to_excel(worksheet, row, col, ['Trans Value'], 'BOLD', 'NO_UNDERLINE')
+    worksheet.write(row, 1, FinalBalance, currency_format)
+    row = write_row_of_text_to_excel(worksheet, row, col, ['Final Balance'], 'BOLD', 'NO_UNDERLINE')
 
 def build_NW_excel(worksheet):
     # Add a bold format to use to highlight cells.
@@ -880,9 +957,15 @@ def build_NW_excel(worksheet):
     row = write_row_of_text_to_excel(worksheet, row, col, ['Date', 'Description', 'Paid In', 'Sub Totals','Grand Totals'], 'NO_BOLD', 'UNDERLINE')
     #Blank row
     row = write_row_of_text_to_excel(worksheet, row, col, '', 'NOT_BOLD','NO_UNDERLINE')
-    row = write_row_of_text_to_excel(worksheet, row, col, ['Income'], 'BOLD', 'NO_UNDERLINE')
+    row = write_row_of_text_to_excel(worksheet, row, col, ['Incoming Payments'], 'BOLD', 'NO_UNDERLINE')
     row = write_row_of_text_to_excel(worksheet, row, col, '', 'NOT_BOLD','NO_UNDERLINE')
     start_row = row
+    row = write_row_of_text_to_excel(worksheet, row, col, ['Savings'], 'BOLD', 'NO_UNDERLINE')
+    row = write_row_of_text_to_excel(worksheet, row, col, '', 'NOT_BOLD', 'NO_UNDERLINE')
+    row = write_NW_trans_to_excel(worksheet, row, col, 'INCOMING', NW_Incoming_Savings)
+    row = write_row_of_text_to_excel(worksheet, row, col, '', 'NOT_BOLD', 'NO_UNDERLINE')
+    row = write_row_of_text_to_excel(worksheet, row, col, ['Other Income'], 'BOLD', 'NO_UNDERLINE')
+    row = write_row_of_text_to_excel(worksheet, row, col, '', 'BOLD', 'NO_UNDERLINE')
     row  = write_NW_trans_to_excel(worksheet, row, col, 'INCOMING', NW_Incoming_Trans)
     row = write_row_of_text_to_excel(worksheet, row, col, '', 'NOT_BOLD', 'NO_UNDERLINE')
     row = write_row_of_text_to_excel(worksheet, row, col, ['Transfer Payments'],'BOLD', 'NO_UNDERLINE')
@@ -977,9 +1060,16 @@ def check_dictionary(row, dictionary):
 
 def process_NW_incoming(row):
 
-    category=check_dictionary(row,ic_types_dict)
+    if(Catch_First_Trans_Flag[0]=='ON'):
+        Catch_First_Trans_Flag.append(row)
+        Catch_First_Trans_Flag[0] = 'OFF'
 
-    if(category == 'IC_TRANSFER'):
+    category=check_dictionary(row,ic_types_dict)
+    print('Incoming Transactions =', row)
+    if(category == 'SAVINGS'):
+        print('Savings = ', row)
+        NW_Incoming_Savings.append(row)
+    elif(category == 'IC_TRANSFER'):
         #print('Transfer',row)
         NW_Incoming_Transfers.append(row)
     else:
@@ -988,6 +1078,11 @@ def process_NW_incoming(row):
     #print("process_NW_incoming NW_Incoming_Trans",NW_Incoming_Trans)
 
 def process_NW_outgoing(row):
+
+    if (Catch_First_Trans_Flag[0] == 'ON'):
+        Catch_First_Trans_Flag.append(row)
+        Catch_First_Trans_Flag[0]='OFF'
+
     category = check_dictionary(row, og_types_dict)
 
     if(category == 'BILLS'):
@@ -1033,13 +1128,12 @@ def process_NW_csv_row(row):
             #print(row)
             process_NW_outgoing(row)
 
-    return('OFF')
 
 
 
-#####################################################################################
-#####################################  MAIN #########################################
-#####################################################################################
+#####################################################################################################################
+#####################################  MAIN #########################################################################
+#####################################################################################################################
 
 #def main(argv):
 
@@ -1071,11 +1165,11 @@ if __name__ == "__main__":
 finalInputPath = os.path.join("c:",os.sep, "Users","sdinn","Downloads",inputfile)
 finalOutputPath = os.path.join("c:",os.sep, "Users","sdinn","Downloads",outputfile)
 
-#finalIPHeaderPath = os.path.join("c:",os.sep, "Users","sdinn","OneDrive","Documents","Personal","Python","ParserFiles","Nationwide","IC_HEADER.csv")
-#finalOPHeaderPath = os.path.join("c:",os.sep, "Users","sdinn","OneDrive","Documents","Personal","Python","ParserFiles","Nationwide","OG_HEADER.csv")
+#
+# Construct dircetory files for Nationwide IC_HEADER & OG_HEADER csv files
+#
 finalIPHeaderPath = os.path.join("c:",os.sep, "Users","sdinn","OneDrive","Documents","fin","Budget","ParserFiles","IC_HEADER.csv")
 finalOPHeaderPath = os.path.join("c:",os.sep, "Users","sdinn","OneDrive","Documents","fin","Budget","ParserFiles","OG_HEADER.csv")
-
 
 
 print('FINAL Input PATH', finalInputPath)
@@ -1111,12 +1205,15 @@ if(filetype == 'NW'):
             #print('OG_HEADER_FILE:', line)
             og_types_dict[line[0]] = line[1]
 
-        print('OG_Dictionary', og_types_dict)
+        #print('OG_Dictionary', og_types_dict)
 
-
+    #
+    # Record the balance of the first NW transaction for checksum purposes
+    #
+    Catch_First_Trans_Flag.append('ON')
 
 #
-# Open CSV file & process
+# Open INPUT.csv file & process
 #
 with open(finalInputPath, 'r') as f:
 
@@ -1131,9 +1228,9 @@ with open(finalInputPath, 'r') as f:
 
 
 
-########################################################################################
-################################   BUILD EXCEL #########################################
-########################################################################################
+#####################################################################################################################
+################################   BUILD EXCEL ######################################################################
+#####################################################################################################################
 
 workbook = xlsxwriter.Workbook(finalOutputPath)
 
